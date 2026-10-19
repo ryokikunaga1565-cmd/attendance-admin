@@ -1,63 +1,177 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#f5f6f8">
   <title>出勤簿 管理者画面</title>
   <style>
-    *{box-sizing:border-box}body{font-family:system-ui,sans-serif;background:#f5f6f8;margin:0;padding:20px;color:#222}
-    .container{max-width:600px;margin:auto}h1{font-size:24px;text-align:center}h2{font-size:20px;margin-top:0}
-    .panel{background:#fff;border-radius:12px;padding:20px;margin-top:16px;box-shadow:0 2px 8px #00000010}
-    .status{color:#586174;font-size:14px;line-height:1.6;overflow-wrap:anywhere}.request{border-top:1px solid #ddd;padding:16px 0}
-    button,input{font:inherit}button{padding:14px 20px;border:0;border-radius:10px;cursor:pointer;min-height:44px}
-    button:disabled{opacity:.55;cursor:default}input{width:100%;padding:13px;border:1px solid #abb4c0;border-radius:8px}
-    .refresh{background:#e8edf5;width:100%}.approve{background:#1677e8;color:white;width:100%;margin-top:12px}
-    .danger{background:#c83243}.toolbar{display:flex;justify-content:flex-end;gap:8px}.toolbar button{width:auto;padding:10px 16px}
-    [hidden]{display:none!important}.panel summary{cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:12px}
-    .panel summary::-webkit-details-marker{display:none}.panel summary h2{margin:0}.panel summary::after{content:'＋';color:#64748b;font-size:22px}
-    .panel[open] summary::after{content:'－'}.counts{display:flex;gap:12px;flex-wrap:wrap}.count{flex:1;min-width:170px;padding:16px;border-radius:10px;line-height:1.6}
-    .count strong{font-size:28px}.warning{color:#a62b38}.success{color:#137448}#operationMessage{white-space:pre-line}
-    @media(max-width:420px){body{padding:12px}.panel{padding:16px}.panel summary h2{font-size:18px}.count{min-width:120px}}
-  </style>
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: sans-serif;
+      background: #f5f6f8;
+      margin: 0;
+      padding: 20px;
+      color: #222;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: auto;
+    }
+
+    h1 {
+      font-size: 24px;
+      text-align: center;
+    }
+
+    .panel {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 16px;
+      box-shadow: 0 2px 8px #00000010;
+    }
+
+    .status {
+      color: #666;
+      font-size: 14px;
+    }
+
+    .request {
+      border-top: 1px solid #ddd;
+      padding: 16px 0;
+    }
+
+    button {
+      padding: 14px 20px;
+      font-size: 16px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    .refresh {
+      background: #e8edf5;
+      width: 100%;
+    }
+
+    .approve {
+      background: #1677e8;
+      color: white;
+      width: 100%;
+      margin-top: 12px;
+    }
+    
+/* 折りたたみパネル */
+.panel summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.panel summary::-webkit-details-marker {
+  display: none;
+}
+
+.panel summary h2 {
+  margin: 0;
+}
+
+.panel summary::after {
+  content: "＋";
+  color: #64748b;
+  font-size: 22px;
+}
+
+.panel[open] summary::after {
+  content: "－";
+}
+
+  [hidden] { display:none !important; }
+input { display:block; width:100%; padding:14px; font-size:16px; border:1px solid #cbd5e1; border-radius:8px; margin:8px 0 18px; }
+button:disabled { opacity:.55; cursor:wait; }
+.status { overflow-wrap:anywhere; }
+@media(max-width:480px) { body { padding:12px; } .panel { padding:16px; } h1 { font-size:22px; } }
+</style>
 </head>
-<body>
-  <div id="startup" class="container"><p class="status" role="status">ログイン状態を確認中...</p></div>
-  <div id="loginScreen" class="container" hidden>
-    <section class="panel"><h2>管理者ログイン</h2>
-      <form id="loginForm">
-        <p><label for="loginEmail">メールアドレス</label><input id="loginEmail" type="email" autocomplete="username" required></p>
-        <p><label for="loginPassword">パスワード</label><input id="loginPassword" type="password" autocomplete="current-password" required></p>
-        <button type="submit" class="approve">ログイン</button>
-      </form><p id="loginMessage" class="status" role="status"></p>
-    </section>
-  </div>
-  <main id="adminScreen" class="container" hidden>
-    <h1>出勤簿 管理者画面</h1>
-    <div class="toolbar"><button class="refresh" type="button" data-refresh data-command>↻ 更新</button><button id="logoutButton" type="button">ログアウト</button></div>
-    <p id="dataStatus" class="status" role="status">最新の情報を確認中...</p>
-    <p id="operationMessage" class="status" role="status" aria-live="polite"></p>
-    <section class="panel"><h2>Excelへの反映状況</h2>
+<body><p id="bootMessage" class="status" role="status" style="text-align:center">ログイン状態を確認しています…</p>
+<div id="loginScreen" class="container" hidden><h1>出勤簿 管理者画面</h1><section class="panel">
+<h2>管理者ログイン</h2><form id="loginForm"><label for="loginEmail">メールアドレス</label><input id="loginEmail" type="email" autocomplete="username" required>
+<label for="loginPassword">パスワード</label><input id="loginPassword" type="password" autocomplete="current-password" required><button type="submit" class="approve">ログイン</button></form>
+<p id="loginMessage" class="status" role="status"></p></section></div>
+  <div id="adminScreen" class="container" hidden>
+    <h1>出勤簿 管理者画面</h1><p id="pageMessage" class="status" role="status" aria-live="polite"></p><button id="logoutButton" data-logout type="button" style="float:left;padding:10px 14px">ログアウト</button><div style="text-align:right"><button type="button" class="refresh" style="width:auto;padding:10px 16px" onclick="refreshAdmin()">↻ 更新</button></div>
+    <section class="panel">
+      <h2 style="margin-top:0">Excelへの反映状況</h2>
       <p class="status">出勤・修正の記録が、会社のExcelへ転記されるのを待っている件数です。</p>
-      <div class="counts"><div class="count" style="background:#fff4df">出勤の反映待ち<br><strong id="syncPending">—</strong></div><div class="count" style="background:#e7f1ff">修正の反映待ち<br><strong id="syncEdits">—</strong></div></div>
-      <p id="syncSummaryMessage" class="status">取得中...</p><p id="syncCheckedAt" class="status"></p>
-      <button class="refresh" type="button" data-refresh data-command>反映状況を更新</button>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <div style="flex:1;background:#fff4df;padding:16px;border-radius:10px">出勤の反映待ち<br><strong id="syncPending" style="font-size:28px">—</strong></div>
+        <div style="flex:1;background:#e7f1ff;padding:16px;border-radius:10px">修正の反映待ち<br><strong id="syncEdits" style="font-size:28px">—</strong></div>
+      </div>
+      <p id="syncSummaryMessage" class="status" role="status">管理者認証を確認中...</p>
+      <p id="syncCheckedAt" class="status"></p>
+      <button id="syncRefreshButton" class="refresh" type="button" onclick="loadSyncSummary()">反映状況を更新</button>
     </section>
-    <details class="panel"><summary><h2>端末登録申請</h2><span id="deviceRequestCount" class="status">確認中...</span></summary>
-      <p id="requestStatus" class="status"></p><button class="refresh" type="button" data-refresh data-command>申請一覧を更新</button>
-      <button id="approveAllButton" class="approve" type="button" data-command hidden>まとめて承認</button><div id="requestList"></div>
-    </details>
-    <details class="panel"><summary><h2>端末管理一覧</h2></summary>
-      <p class="status">承認済みの端末を確認・無効化できます。</p><button class="refresh" type="button" data-refresh data-command>一覧を更新</button>
-      <button id="toggleDeviceHistoryButton" class="refresh" type="button" style="margin-top:10px">すべて表示（無効化済みを含む）</button>
-      <div id="approvedDeviceList"></div>
-    </details>
-  </main>
-  <script type="module">
-    import('./admin-app.js?v=20261019-2').catch(() => {
-      document.getElementById('startup').hidden=false;
-      document.getElementById('startup').textContent='画面を読み込めませんでした。通信状態と差し替えファイルを確認して、再読み込みしてください。';
-    });
-  </script>
-</body>
-</html>
+
+    <details class="panel">
+  <summary>
+    <h2>端末登録申請</h2>
+  </summary>
+      <p class="status" id="status">
+  管理者認証を確認中...
+</p>
+<p class="status" id="adminStatus"></p>
+
+     <button class="refresh" type="button" onclick="loadRequests()">
+  申請一覧を更新
+</button>
+
+<button
+  id="approveAllButton"
+  class="approve"
+  type="button"
+  style="display:none; margin:12px 0;"
+  onclick="approveAllRequests()">
+  まとめて承認
+</button>
+
+<div id="requestList">
+        <p class="status">
+          接続設定後、ここに承認待ちの申請を表示します。
+        </p>
+      </div>
+      </details>
+
+  <details class="panel">
+    <summary>
+      <h2>端末管理一覧</h2>
+    </summary>
+
+<button class="refresh" type="button" onclick="loadApprovedDevices()">
+  一覧を更新
+</button>
+
+<button
+  id="toggleDeviceHistoryButton"
+  type="button"
+  onclick="toggleDeviceHistory()"
+  style="width:100%; margin-top:10px; background:#64748b; color:white;">
+  すべて表示（無効化済みを含む）
+</button>
+
+    <div id="approvedDeviceList">
+      <p class="status">「一覧を更新」を押してください。</p>
+    </div>
+  </details>
+</div>
+<script type="module">
+import('./app.js').catch(() => {
+ const status = document.getElementById('bootMessage');
+ status.hidden = false; status.textContent = '画面を読み込めませんでした。通信と公開ファイルを確認して再読み込みしてください。';
+});
+</script><noscript>この画面を使用するにはJavaScriptを有効にしてください。</noscript></body></html>
