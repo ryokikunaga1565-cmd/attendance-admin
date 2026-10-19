@@ -1,0 +1,19 @@
+﻿<script type="module">
+  // Import the functions you need from the SDKs you need
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
+  // TODO: Add SDKs for Firebase products that you want to use
+  // https://firebase.google.com/docs/web/setup#available-libraries
+
+  // Your web app's Firebase configuration
+  const firebaseConfig = {
+    apiKey: "AIzaSyA1VGVdOPktRfdxRWaFKX2dMIc0WpJEDgU",
+    authDomain: "attendance-admin-ee719.firebaseapp.com",
+    projectId: "attendance-admin-ee719",
+    storageBucket: "attendance-admin-ee719.firebasestorage.app",
+    messagingSenderId: "653854375196",
+    appId: "1:653854375196:web:769d671fca81fa36c64ed9"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+</script>

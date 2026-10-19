@@ -1,0 +1,119 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GAS通信・認証テスト</title>
+</head>
+<body>
+  <h2>GAS通信・認証テスト</h2>
+
+  <p id="loginStatus">ログイン状態を確認中...</p>
+
+  <button id="testButton">通信テスト</button>
+  <button id="authButton" disabled>管理者認証テスト</button>
+
+  <p id="result">未実行</p>
+  <p id="authResult">認証結果：監視待機中...</p>
+
+  <script type="module">
+    import {
+      watchLogin,
+      getLoginToken
+    } from "./firebase-auth.js";
+    import { watchAuthResult } from "./firestore-api.js";
+
+    const gasUrl =
+      "https://script.google.com/macros/s/AKfycby7a3OQFzPVbs2E8Ho7z9dCn_EbhMD9P4ZhDr2jomv30fRqWkOBcmcKaJkX7pMucennXw/exec";
+
+    const result = document.getElementById("result");
+    const authButton = document.getElementById("authButton");
+    const loginStatus = document.getElementById("loginStatus");
+
+    watchLogin(user => {
+      if (user) {
+        loginStatus.textContent = "ログイン確認OK";
+        authButton.disabled = false;
+      } else {
+        loginStatus.textContent = "未ログインです";
+        authButton.disabled = true;
+      }
+    });
+
+    async function sendToGas(data) {
+      await fetch(gasUrl, {
+        method: "POST",
+        mode: "no-cors",
+        headers: {
+          "Content-Type": "text/plain"
+        },
+        body: JSON.stringify(data)
+      });
+    }
+
+    document.getElementById("testButton").onclick = async () => {
+      result.textContent = "送信中...";
+
+      try {
+        await sendToGas({
+          action: "connectionTest"
+        });
+
+        result.textContent =
+          "送信処理が完了しました。GASの実行ログを確認してください。";
+      } catch (error) {
+        result.textContent = "通信エラー：" + error.message;
+      }
+    };
+
+    authButton.onclick = async () => {
+      authButton.disabled = true;
+      result.textContent = "管理者認証テストを送信中...";
+
+      try {
+        const idToken = await getLoginToken();
+
+        await sendToGas({
+          action: "authTest",
+          idToken: idToken
+        });
+
+        result.textContent =
+          "送信処理が完了しました。GASの実行ログで認証結果を確認してください。";
+
+      } catch (error) {
+        result.textContent = "エラー：" + error.message;
+      } finally {
+        authButton.disabled = false;
+      }
+    };
+    
+watchAuthResult(
+  data => {
+    const display = document.getElementById("authResult");
+
+    if (!data) {
+      display.textContent = "認証結果：まだありません";
+      return;
+    }
+
+    
+const updatedAt = data.updatedAt?.toDate
+  ? data.updatedAt.toDate().toLocaleString("ja-JP")
+  : "未記録";
+
+display.textContent =
+  "認証結果：" + (data.status || "不明") +
+  " ／ 更新日時：" + updatedAt;
+
+  },
+  error => {
+    document.getElementById("authResult").textContent =
+      "監視エラー：" + error.message;
+  }
+);
+
+  </script>
+</body>
+</html>

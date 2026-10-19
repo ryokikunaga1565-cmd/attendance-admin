@@ -1,0 +1,110 @@
+﻿
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Firestore接続テスト</title>
+</head>
+<body>
+  <h2>Firestore接続テスト</h2>
+
+  <p id="status">ログイン状態を確認中...</p>
+  <p id="requestCount">端末登録申請：確認中...</p>
+
+  <button id="testButton" disabled>接続テスト</button>
+  <button id="commandButton" disabled>テスト指示を送信</button>
+
+  <script type="module">
+    import { watchLogin } from "./firebase-auth.js";
+
+    import {
+      testFirestoreConnection,
+      sendTestCommand,
+      watchDeviceRequestCount
+    } from "./firestore-api.js";
+
+    const status = document.getElementById("status");
+    const requestCount = document.getElementById("requestCount");
+    const testButton = document.getElementById("testButton");
+    const commandButton = document.getElementById("commandButton");
+
+    let loggedIn = false;
+    let busy = false;
+    let stopWatching = null;
+
+    function updateButtons() {
+      testButton.disabled = !loggedIn || busy;
+      commandButton.disabled = !loggedIn || busy;
+    }
+
+    watchLogin(user => {
+      loggedIn = !!user;
+
+      status.textContent = loggedIn
+        ? "ログイン確認OK"
+        : "未ログインです。先に管理者画面でログインしてください。";
+
+      updateButtons();
+
+      // ログイン状態が変わったら以前の監視を解除
+      if (stopWatching) {
+        stopWatching();
+        stopWatching = null;
+      }
+
+      if (!user) {
+        requestCount.textContent = "端末登録申請：ログインが必要です";
+        return;
+      }
+
+      requestCount.textContent = "端末登録申請：取得中...";
+
+      stopWatching = watchDeviceRequestCount(
+        data => {
+          requestCount.textContent =
+            "端末登録申請：" + (data?.count ?? 0) + "件";
+        },
+        error => {
+          requestCount.textContent =
+            "申請件数の取得エラー：" + error.message;
+        }
+      );
+    });
+
+    testButton.addEventListener("click", async () => {
+      busy = true;
+      updateButtons();
+      status.textContent = "接続テスト中...";
+
+      try {
+        const result = await testFirestoreConnection();
+        status.textContent = "接続成功：" + result.message;
+      } catch (error) {
+        status.textContent = "接続失敗：" + error.message;
+        console.error(error);
+      } finally {
+        busy = false;
+        updateButtons();
+      }
+    });
+
+    commandButton.addEventListener("click", async () => {
+      busy = true;
+      updateButtons();
+      status.textContent = "テスト指示を送信中...";
+
+      try {
+        const message = await sendTestCommand();
+        status.textContent = message;
+      } catch (error) {
+        status.textContent = "送信失敗：" + error.message;
+        console.error(error);
+      } finally {
+        busy = false;
+        updateButtons();
+      }
+    });
+  </script>
+</body>
+</html>
