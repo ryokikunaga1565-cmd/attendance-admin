@@ -130,6 +130,25 @@ select { max-width:100%; padding:10px; font-size:16px; border:1px solid #cbd5e1;
 <p id="loginMessage" class="status" role="status"></p></section></div>
   <div id="adminScreen" class="container" hidden>
     <h1>出勤簿 管理者画面</h1><p id="pageMessage" class="status" role="status" aria-live="polite"></p><button id="logoutButton" data-logout type="button" style="float:left;padding:10px 14px">ログアウト</button><div style="text-align:right"><button type="button" class="refresh" style="width:auto;padding:10px 16px" onclick="refreshAdmin()">↻ 更新</button></div>
+<details class="panel compact" id="masterPanel">
+  <summary><h2>現場マスター</h2></summary>
+  <p class="status">年度ごとに管理します。変更は同期PCを通してExcelへ反映されます。</p>
+  <div class="master-tools"><button id="masterRefresh" class="refresh" type="button">一覧を更新</button><button id="masterAdd" type="button">現場を追加</button></div>
+  <p id="masterMessage" class="status" role="status" aria-live="polite">一覧を更新してください。</p>
+  <div class="master-tools"><select id="masterYear" aria-label="表示する年度"></select><select id="masterCompany" aria-label="表示する会社"><option value="">全会社</option>菊永建設</option><option>アールシー</option></select><input id="masterSearch" type="search" placeholder="現場名・工事番号で検索" aria-label="現場を検索"></div>
+  <form id="masterEditor" hidden>
+    <strong id="masterEditorTitle">現場を追加</strong>
+    <label>年度<select id="editYear" required></select></label>
+    <label>会社<select id="editCompany" required><option>菊永建設</option><option>アールシー</option></select></label>
+    <label>工事種別<select id="editType" required><option>公共</option><option>民間</option></select></label>
+    <label>区分<select id="editCategory"><option>通常</option><option>小規模</option></select></label>
+    <label>現場名<input id="editName" required maxlength="100" autocomplete="off"></label>
+    <label>表示<select id="editStatus"><option value="○">○ 通常の現場一覧</option><option value="△">△ 過去の現場</option><option value="×">× 一覧に表示しない</option><option value="">空欄 一覧に表示しない</option></select></label>
+    <p id="editCode" class="status">工事番号はExcelで自動採番します。</p>
+    <button type="submit" class="approve">変更を依頼する</button> <button id="masterCancel" type="button">閉じる</button>
+  </form>
+  <div id="masterChanges"></div><div id="masterList"></div>
+</details>
     <details class="panel compact">
       <summary><h2>Excelへの反映状況</h2></summary>
       <p class="status">出勤・修正の記録が、会社のExcelへ転記されるのを待っている件数です。</p>
@@ -192,25 +211,7 @@ select { max-width:100%; padding:10px; font-size:16px; border:1px solid #cbd5e1;
       <p class="status">「一覧を更新」を押してください。</p>
     </div>
   </details>
-<details class="panel compact" id="masterPanel">
-  <summary><h2>現場マスター</h2></summary>
-  <p class="status">年度ごとに管理します。変更は同期PCを通してExcelへ反映されます。</p>
-  <div class="master-tools"><button id="masterRefresh" class="refresh" type="button">一覧を更新</button><button id="masterAdd" type="button">現場を追加</button></div>
-  <p id="masterMessage" class="status" role="status" aria-live="polite">一覧を更新してください。</p>
-  <div class="master-tools"><select id="masterYear" aria-label="表示する年度"></select><select id="masterCompany" aria-label="表示する会社"><option value="">全会社</option>菊永建設</option><option>アールシー</option></select><input id="masterSearch" type="search" placeholder="現場名・工事番号で検索" aria-label="現場を検索"></div>
-  <form id="masterEditor" hidden>
-    <strong id="masterEditorTitle">現場を追加</strong>
-    <label>年度<select id="editYear" required></select></label>
-    <label>会社<select id="editCompany" required><option>菊永建設</option><option>アールシー</option></select></label>
-    <label>工事種別<select id="editType" required><option>公共</option><option>民間</option></select></label>
-    <label>区分<select id="editCategory"><option>通常</option><option>小規模</option></select></label>
-    <label>現場名<input id="editName" required maxlength="100" autocomplete="off"></label>
-    <label>表示<select id="editStatus"><option value="○">○ 通常の現場一覧</option><option value="△">△ 過去の現場</option><option value="×">× 一覧に表示しない</option><option value="">空欄 一覧に表示しない</option></select></label>
-    <p id="editCode" class="status">工事番号はExcelで自動採番します。</p>
-    <button type="submit" class="approve">変更を依頼する</button> <button id="masterCancel" type="button">閉じる</button>
-  </form>
-  <div id="masterChanges"></div><div id="masterList"></div>
-</details>
+
 </div>
 <script type="module">
 import('./app.js').catch(() => {
