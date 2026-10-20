@@ -5,6 +5,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>出勤簿 管理者画面</title>
+  <meta name="theme-color" content="#12283f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="出勤簿 管理者">
+  <link rel="icon" type="image/png" href="./admin-icon.png">
+  <link rel="apple-touch-icon" href="./admin-icon.png">
+  <link rel="manifest" href="./manifest.webmanifest">
   <style>
     * { box-sizing: border-box; }
 
@@ -97,6 +103,24 @@ input { display:block; width:100%; padding:14px; font-size:16px; border:1px soli
 button:disabled { opacity:.55; cursor:wait; }
 .status { overflow-wrap:anywhere; }
 @media(max-width:480px) { body { padding:12px; } .panel { padding:16px; } h1 { font-size:22px; } }
+
+.panel.compact { padding:0 14px; margin-top:10px; }
+.panel.compact > summary { min-height:44px; padding:9px 0; }
+.panel.compact > summary h2 { font-size:16px; line-height:1.4; font-weight:600; }
+.panel.compact > summary::after { font-size:18px; }
+.panel.compact[open] { padding-bottom:14px; }
+.master-tools { display:flex; gap:8px; flex-wrap:wrap; margin:10px 0; }
+.master-tools > * { flex:1; min-width:110px; }
+select { max-width:100%; padding:10px; font-size:16px; border:1px solid #cbd5e1; border-radius:8px; background:white; }
+.master-tools input { margin:0; padding:10px; }
+.master-row { border-top:1px solid #e2e8f0; padding:10px 0; }
+.master-row p { margin:5px 0; }
+.master-row button { padding:9px 14px; font-size:14px; margin-top:5px; }
+#masterEditor { border:1px solid #cbd5e1; padding:12px; border-radius:8px; margin:12px 0; }
+#masterEditor label { display:block; font-size:14px; margin:10px 0; }
+#masterEditor select { display:block; width:100%; margin-top:5px; }
+#masterEditor input { margin:5px 0; padding:10px; }
+#masterEditor button { padding:10px 14px; }
 </style>
 </head>
 <body><p id="bootMessage" class="status" role="status" style="text-align:center">ログイン状態を確認しています…</p>
@@ -106,8 +130,8 @@ button:disabled { opacity:.55; cursor:wait; }
 <p id="loginMessage" class="status" role="status"></p></section></div>
   <div id="adminScreen" class="container" hidden>
     <h1>出勤簿 管理者画面</h1><p id="pageMessage" class="status" role="status" aria-live="polite"></p><button id="logoutButton" data-logout type="button" style="float:left;padding:10px 14px">ログアウト</button><div style="text-align:right"><button type="button" class="refresh" style="width:auto;padding:10px 16px" onclick="refreshAdmin()">↻ 更新</button></div>
-    <section class="panel">
-      <h2 style="margin-top:0">Excelへの反映状況</h2>
+    <details class="panel compact">
+      <summary><h2>Excelへの反映状況</h2></summary>
       <p class="status">出勤・修正の記録が、会社のExcelへ転記されるのを待っている件数です。</p>
       <div style="display:flex;gap:12px;flex-wrap:wrap">
         <div style="flex:1;background:#fff4df;padding:16px;border-radius:10px">出勤の反映待ち<br><strong id="syncPending" style="font-size:28px">—</strong></div>
@@ -116,9 +140,9 @@ button:disabled { opacity:.55; cursor:wait; }
       <p id="syncSummaryMessage" class="status" role="status">管理者認証を確認中...</p>
       <p id="syncCheckedAt" class="status"></p>
       <button id="syncRefreshButton" class="refresh" type="button" onclick="loadSyncSummary()">反映状況を更新</button>
-    </section>
+    </details>
 
-    <details class="panel">
+    <details class="panel compact">
   <summary>
     <h2>端末登録申請</h2>
   </summary>
@@ -147,7 +171,7 @@ button:disabled { opacity:.55; cursor:wait; }
       </div>
       </details>
 
-  <details class="panel">
+  <details class="panel compact">
     <summary>
       <h2>端末管理一覧</h2>
     </summary>
@@ -168,6 +192,25 @@ button:disabled { opacity:.55; cursor:wait; }
       <p class="status">「一覧を更新」を押してください。</p>
     </div>
   </details>
+<details class="panel compact" id="masterPanel">
+  <summary><h2>現場マスター</h2></summary>
+  <p class="status">年度ごとに管理します。変更は同期PCを通してExcelへ反映されます。</p>
+  <div class="master-tools"><button id="masterRefresh" class="refresh" type="button">一覧を更新</button><button id="masterAdd" type="button">現場を追加</button></div>
+  <p id="masterMessage" class="status" role="status" aria-live="polite">一覧を更新してください。</p>
+  <div class="master-tools"><select id="masterYear" aria-label="表示する年度"></select><select id="masterCompany" aria-label="表示する会社"><option value="">全会社</option>菊永建設</option><option>アールシー</option></select><input id="masterSearch" type="search" placeholder="現場名・工事番号で検索" aria-label="現場を検索"></div>
+  <form id="masterEditor" hidden>
+    <strong id="masterEditorTitle">現場を追加</strong>
+    <label>年度<select id="editYear" required></select></label>
+    <label>会社<select id="editCompany" required><option>菊永建設</option><option>アールシー</option></select></label>
+    <label>工事種別<select id="editType" required><option>公共</option><option>民間</option></select></label>
+    <label>区分<select id="editCategory"><option>通常</option><option>小規模</option></select></label>
+    <label>現場名<input id="editName" required maxlength="100" autocomplete="off"></label>
+    <label>表示<select id="editStatus"><option value="○">○ 通常の現場一覧</option><option value="△">△ 過去の現場</option><option value="×">× 一覧に表示しない</option><option value="">空欄 一覧に表示しない</option></select></label>
+    <p id="editCode" class="status">工事番号はExcelで自動採番します。</p>
+    <button type="submit" class="approve">変更を依頼する</button> <button id="masterCancel" type="button">閉じる</button>
+  </form>
+  <div id="masterChanges"></div><div id="masterList"></div>
+</details>
 </div>
 <script type="module">
 import('./app.js').catch(() => {

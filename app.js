@@ -1,9 +1,11 @@
+import { setupMaster } from './master-ui.js';
 import { auth, watchLogin, login, logout } from './firebase-auth.js';
 import { adminUid } from './config.js';
 import { callAdmin, cancelAdminCalls } from './firestore-api.js';
 
 const $ = id => document.getElementById(id);
 let current = null, busy = false, showAll = false, session = 0;
+const master = setupMaster({call:callAdmin, authorized:()=>auth.currentUser?.uid===adminUid, setBusy, isBusy:()=>busy, message});
 function message(text, error = false) {
   $('pageMessage').textContent = text;
   $('pageMessage').style.color = error ? '#b91c1c' : '#475569';
@@ -11,6 +13,7 @@ function message(text, error = false) {
 function setBusy(value) {
   busy = value;
   document.querySelectorAll('#adminScreen button:not([data-logout])').forEach(button => { button.disabled = value; });
+  if(!value) master.restoreDisabled();
 }
 function element(tag, text, className) {
   const item = document.createElement(tag); item.textContent = text;
@@ -111,7 +114,7 @@ $('logoutButton').onclick = async () => {
   try { await logout(); } catch { message('ログアウトできませんでした。通信を確認してください。', true); }
 };
 watchLogin(async user => {
-  session++; cancelAdminCalls(); current = null; showAll = false; busy = false;
+  session++; cancelAdminCalls(); master.reset(); current = null; showAll = false; busy = false;
   $('requestList').replaceChildren(); $('approvedDeviceList').replaceChildren();
   $('syncPending').textContent = '—'; $('syncEdits').textContent = '—';
   $('syncCheckedAt').textContent = ''; $('syncSummaryMessage').textContent = '最新情報を確認してください。';
