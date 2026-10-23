@@ -59,7 +59,10 @@ function render() {
 }
 async function refreshAdmin() {
   if (busy || auth.currentUser?.uid !== adminUid) return;
-  const epoch = session; setBusy(true); message('最新の情報を確認しています…');
+  const epoch = session;
+  await master.load();
+  if (epoch !== session) return;
+  setBusy(true); message('最新の情報を確認しています…');
   try {
     const result = await callAdmin('getOverview');
     if (epoch !== session) return;

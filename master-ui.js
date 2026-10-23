@@ -1,41 +1,55 @@
 export function setupMaster({call, authorized, setBusy, isBusy, message}) {
   const $=id=>document.getElementById(id);
-  let data=null, base=null, mode='add', epoch=0;
+  let data=null, base=null, mode='add', epoch=0, company='菊永建設';
+  const companies=Array.from(document.querySelectorAll('[data-company]'));
   const node=(tag,text,cls)=>{const e=document.createElement(tag);e.textContent=text;if(cls)e.className=cls;return e;};
   function years(select, selected) {
     select.replaceChildren();
     for(const year of [...new Set(data.sites.map(s=>s.year))].sort((a,b)=>b-a)) {
-      const option=node('option','令和'+year+'年度'); option.value=String(year); select.append(option);
+      const option=node('option','令和'+year+'年度');option.value=String(year);select.append(option);
     }
     if([...select.options].some(o=>o.value===String(selected))) select.value=String(selected);
   }
+  function currentChanges() { return data.changes.filter(c=>c.command.site.company===company && c.command.site.year===Number($('masterYear').value)); }
   function render() {
     if(!data)return;
+    companies.forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.company===company)));
     const pending=new Set(data.changes.filter(c=>c.state==='待機中' && c.command.base).map(c=>c.command.base.code));
+    const visible=data.sites.filter(s=>s.year===Number($('masterYear').value) && s.company===company && (s.name+' '+s.code).includes($('masterSearch').value.trim()));
     $('masterList').replaceChildren();
-    const visible=data.sites.filter(s=>s.year===Number($('masterYear').value) && (!$('masterCompany').value || s.company===$('masterCompany').value) && (s.name+' '+s.code).includes($('masterSearch').value.trim()));
-    for(const site of visible) {
-      const row=node('div','','master-row');
-      row.append(node('strong',site.name),node('p',`${site.code} ／ ${site.company} ／ ${site.type}${site.type==='公共'?'・'+site.category:''} ／ ${site.status || '空欄'}`,'status'));
-      const b=node('button',pending.has(site.code)?'Excelへの反映待ち':'編集');b.type='button';b.disabled=pending.has(site.code);b.dataset.masterPending=String(pending.has(site.code));
-      b.onclick=()=>open('edit',site);row.append(b);$('masterList').append(row);
+    for(const type of ['公共','民間']) {
+      const sites=visible.filter(s=>s.type===type);if(!sites.length)continue;
+      $('masterList').append(node('h3',type+'工事　'+sites.length+'件','master-group-title'));
+      for(const site of sites) {
+        const waiting=pending.has(site.code), row=node('div','','master-row'), info=node('div','','master-info');
+        info.append(node('strong',site.name),node('p',site.code+(site.type==='公共'?' ・ '+site.category:'')));
+        const badge=node('span',waiting?'反映待ち':({'○':'○ 使用中','△':'△ 過去','×':'× 非表示','':'準備中'}[site.status] || site.status),'master-badge');
+        if(waiting)badge.classList.add('pending');else if(site.status==='○')badge.classList.add('active');else if(site.status==='△')badge.classList.add('past');
+        const b=node('button','編集','master-edit');b.type='button';b.disabled=waiting;b.dataset.masterPending=String(waiting);
+        b.setAttribute('aria-label',site.name+'を編集');b.onclick=()=>open('edit',site);
+        row.append(info,badge,b);$('masterList').append(row);
+      }
     }
     if(!visible.length)$('masterList').append(node('p','該当する現場はありません。','status'));
-    $('masterChanges').replaceChildren();
-    for(const c of data.changes) {
+    const changes=currentChanges(), waiting=changes.filter(c=>c.state==='待機中'), conflicts=changes.filter(c=>c.state==='要確認');
+    $('masterPending').textContent=[waiting.length?'Excelへの反映待ち：'+waiting.map(c=>c.command.site.name).join('、'):'',conflicts.length?'要確認：'+conflicts.map(c=>c.command.site.name).join('、')+'（変更履歴を確認してください）':''].filter(Boolean).join(' ／ ');
+    $('masterChanges').replaceChildren();$('masterChangeCount').textContent=changes.length?changes.length+'件':'';
+    $('masterHistory').hidden=!changes.length;
+    for(const c of changes) {
       const row=node('p',`${c.state==='待機中'?'Excelへの反映待ち':c.state}：${c.command.site.name}${c.code?'（'+c.code+'）':''} — ${c.message}`,'status');
       if(c.state==='要確認')row.style.color='#b91c1c';$('masterChanges').append(row);
     }
+    $('masterMessage').textContent=company+' ／ 表示中 '+visible.length+'件';
   }
   function open(nextMode,site=null) {
     if(isBusy() || !data)return;
     mode=nextMode;base=site?{...site}:null;
     $('masterEditorTitle').textContent=mode==='edit'?'現場を編集':'現場を追加';
     years($('editYear'),site?.year || $('masterYear').value);
-    for(const [id,key,fallback] of [['editCompany','company','菊永建設'],['editType','type','公共'],['editCategory','category','通常'],['editName','name',''],['editStatus','status','○']]) $(id).value=site?.[key] ?? fallback;
-    for(const id of ['editYear','editCompany','editType','editCategory']) $(id).disabled=mode==='edit';
-    $('editCategory').closest('label').hidden=$('editType').value==='民間';
-    $('editCode').textContent=site?'工事番号：'+site.code+'（年度・会社・種別・区分は固定）':'工事番号はExcelで自動採番します。各欄の末尾に追加します。';
+    for(const [id,key,fallback] of [['editCompany','company',company],['editType','type','公共'],['editCategory','category','通常'],['editName','name',''],['editStatus','status','○']]) $(id).value=site?.[key] ?? fallback;
+    for(const id of ['editYear','editCompany','editType','editCategory']) {$(id).disabled=mode==='edit';$(id).closest('label').hidden=mode==='edit';}
+    $('editCategory').closest('label').hidden=mode==='edit' || $('editType').value==='民間';
+    $('editCode').textContent=site?`${site.code} ／ ${site.company} ／ ${site.type}${site.type==='公共'?'・'+site.category:''}`:'工事番号はExcelで自動採番します。';
     $('masterEditor').hidden=false;$('editName').focus();
   }
   async function load() {
@@ -44,17 +58,16 @@ export function setupMaster({call, authorized, setBusy, isBusy, message}) {
     try {
       const result=await call('getMaster');if(own!==epoch)return;
       data=result;years($('masterYear'),$('masterYear').value);$('masterEditor').hidden=true;render();
-      $('masterMessage').textContent=`全年度 ${data.sites.length}件。反映待ち ${data.changes.filter(c=>c.state==='待機中').length}件。`;
     } catch(e){if(own===epoch)$('masterMessage').textContent=e.message+(data?' 表示は前回取得した内容です。':'');}
     finally{if(own===epoch){setBusy(false);restoreDisabled();}}
   }
-  function restoreDisabled(){document.querySelectorAll('[data-master-pending="true"]').forEach(b=>b.disabled=true);}
+  function restoreDisabled(){document.querySelectorAll('[data-master-pending="true"]').forEach(b=>b.disabled=true);$('masterAdd').disabled=isBusy() || !data;}
   $('masterRefresh').onclick=load;
-  $('masterPanel').addEventListener('toggle',()=>{if($('masterPanel').open && !data)load();});
-  $('masterAdd').onclick=()=>data?open('add'):load();
+  companies.forEach(b=>b.onclick=()=>{if(isBusy())return;company=b.dataset.company;$('masterEditor').hidden=true;render();});
+  $('masterAdd').onclick=()=>open('add');
   $('masterCancel').onclick=()=>$('masterEditor').hidden=true;
   $('editType').onchange=()=>$('editCategory').closest('label').hidden=$('editType').value==='民間';
-  for(const id of ['masterYear','masterCompany','masterSearch'])$(id).addEventListener(id==='masterSearch'?'input':'change',render);
+  for(const id of ['masterYear','masterSearch'])$(id).addEventListener(id==='masterSearch'?'input':'change',()=>{if(id==='masterYear')$('masterEditor').hidden=true;render();});
   $('masterEditor').onsubmit=async e=>{
     e.preventDefault();if(isBusy() || !authorized())return;
     const site={name:$('editName').value.trim(),year:Number($('editYear').value),company:$('editCompany').value,type:$('editType').value,category:$('editType').value==='民間'?'民間':$('editCategory').value,status:$('editStatus').value};
@@ -68,5 +81,5 @@ export function setupMaster({call, authorized, setBusy, isBusy, message}) {
     }catch(error){if(own===epoch)message((accepted?'依頼は受け付けましたが、一覧を更新できませんでした。':'')+error.message,true);}
     finally{if(own===epoch){setBusy(false);restoreDisabled();}}
   };
-  return {reset(){epoch++;data=null;base=null;$('masterEditor').hidden=true;$('masterList').replaceChildren();$('masterChanges').replaceChildren();$('masterYear').replaceChildren();$('masterSearch').value='';$('masterMessage').textContent='一覧を更新してください。';$('masterPanel').open=false;},restoreDisabled};
+  return {load,reset(){epoch++;data=null;base=null;company='菊永建設';companies.forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.company===company)));$('masterEditor').hidden=true;$('masterList').replaceChildren();$('masterChanges').replaceChildren();$('masterPending').textContent='';$('masterHistory').hidden=true;$('masterHistory').open=false;$('masterYear').replaceChildren();$('masterSearch').value='';$('masterMessage').textContent='現場を読み込みます…';},restoreDisabled};
 }

@@ -109,18 +109,46 @@ button:disabled { opacity:.55; cursor:wait; }
 .panel.compact > summary h2 { font-size:16px; line-height:1.4; font-weight:600; }
 .panel.compact > summary::after { font-size:18px; }
 .panel.compact[open] { padding-bottom:14px; }
-.master-tools { display:flex; gap:8px; flex-wrap:wrap; margin:10px 0; }
-.master-tools > * { flex:1; min-width:110px; }
+
 select { max-width:100%; padding:10px; font-size:16px; border:1px solid #cbd5e1; border-radius:8px; background:white; }
-.master-tools input { margin:0; padding:10px; }
-.master-row { border-top:1px solid #e2e8f0; padding:10px 0; }
-.master-row p { margin:5px 0; }
-.master-row button { padding:9px 14px; font-size:14px; margin-top:5px; }
-#masterEditor { border:1px solid #cbd5e1; padding:12px; border-radius:8px; margin:12px 0; }
-#masterEditor label { display:block; font-size:14px; margin:10px 0; }
+.master-panel { padding:16px; margin-top:12px; }
+.master-heading { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:14px; }
+.master-heading h2 { font-size:19px; margin:0; }
+.master-heading button { padding:10px 12px; font-size:14px; }
+.master-primary { background:#1677e8; color:#fff; }
+.company-switch { display:flex; background:#edf1f6; border-radius:9px; padding:3px; gap:3px; }
+.company-switch button { flex:1; min-height:42px; padding:8px; font-size:15px; background:transparent; color:#475569; }
+.company-switch button[aria-pressed="true"] { background:#fff; color:#0b5bb4; font-weight:bold; box-shadow:0 1px 4px #0002; }
+.master-filters { display:grid; grid-template-columns:145px minmax(0,1fr) auto; gap:7px; margin-top:12px; }
+.master-filters input { margin:0; min-width:0; padding:9px; }
+.master-filters button { font-size:14px; padding:8px 10px; background:#e8edf5; }
+#masterMessage { margin:10px 0; font-size:13px; }
+.master-group-title { background:#f2f5f9; color:#475569; font-size:12px; margin:12px 0 0; padding:6px 8px; border-radius:4px; }
+.master-row { display:flex; align-items:center; gap:8px; border-bottom:1px solid #edf0f4; padding:9px 0; }
+.master-info { min-width:0; flex:1; }
+.master-info strong { display:block; font-size:15px; line-height:1.4; overflow-wrap:anywhere; }
+.master-info p { margin:3px 0 0; color:#64748b; font-size:12px; }
+.master-badge { white-space:nowrap; font-size:11px; padding:4px 6px; border-radius:5px; background:#f1f5f9; color:#64748b; }
+.master-badge.active { background:#e8f5ef; color:#166344; }
+.master-badge.past { background:#fff5dd; color:#855a11; }
+.master-badge.pending { background:#e7f1ff; color:#175b9f; }
+.master-row .master-edit { flex:none; font-size:12px; min-width:40px; min-height:36px; padding:7px 5px; background:transparent; color:#64748b; margin:0; }
+.master-row .master-edit:hover { background:#edf1f6; color:#175b9f; }
+#masterEditor { display:grid; grid-template-columns:1fr 1fr; column-gap:10px; border:1px solid #b8d2ef; background:#f8fbff; padding:12px; border-radius:8px; margin:12px 0; }
+#masterEditor > strong, #masterEditor .wide, #masterEditor > p { grid-column:1/-1; }
+#masterEditor label { display:block; font-size:13px; margin:8px 0; }
 #masterEditor select { display:block; width:100%; margin-top:5px; }
 #masterEditor input { margin:5px 0; padding:10px; }
-#masterEditor button { padding:10px 14px; }
+#masterEditor button { padding:10px; margin:0; font-size:14px; }
+#masterEditor p { font-size:12px; }
+#masterPending:empty { display:none; }
+#masterPending { background:#f0f6ff; border-radius:6px; padding:9px; font-size:12px; }
+.master-history { margin-top:14px; border-top:1px solid #e2e8f0; padding-top:10px; }
+.master-history > summary { display:list-item; font-size:12px; color:#64748b; list-style:revert; }
+.master-history > summary::after { content:"⌄"; font-size:14px; margin-left:6px; }
+.master-history[open] > summary::after { content:"⌃"; }
+.master-history .status { font-size:12px; }
+@media(max-width:480px) { .master-filters { grid-template-columns:minmax(0,1fr) auto; } .master-filters input { grid-row:2; grid-column:1/-1; } .master-filters select { width:100%; } .master-panel { padding:14px; } }
 </style>
 </head>
 <body><p id="bootMessage" class="status" role="status" style="text-align:center">ログイン状態を確認しています…</p>
@@ -130,25 +158,29 @@ select { max-width:100%; padding:10px; font-size:16px; border:1px solid #cbd5e1;
 <p id="loginMessage" class="status" role="status"></p></section></div>
   <div id="adminScreen" class="container" hidden>
     <h1>出勤簿 管理者画面</h1><p id="pageMessage" class="status" role="status" aria-live="polite"></p><button id="logoutButton" data-logout type="button" style="float:left;padding:10px 14px">ログアウト</button><div style="text-align:right"><button type="button" class="refresh" style="width:auto;padding:10px 16px" onclick="refreshAdmin()">↻ 更新</button></div>
-<details class="panel compact" id="masterPanel">
-  <summary><h2>現場マスター</h2></summary>
-  <p class="status">年度ごとに管理します。変更は同期PCを通してExcelへ反映されます。</p>
-  <div class="master-tools"><button id="masterRefresh" class="refresh" type="button">一覧を更新</button><button id="masterAdd" type="button">現場を追加</button></div>
-  <p id="masterMessage" class="status" role="status" aria-live="polite">一覧を更新してください。</p>
-  <div class="master-tools"><select id="masterYear" aria-label="表示する年度"></select><select id="masterCompany" aria-label="表示する会社"><option value="">全会社</option>菊永建設</option><option>アールシー</option></select><input id="masterSearch" type="search" placeholder="現場名・工事番号で検索" aria-label="現場を検索"></div>
+<section class="panel master-panel" id="masterPanel" aria-labelledby="masterTitle">
+  <div class="master-heading"><h2 id="masterTitle">現場マスター</h2><button id="masterAdd" class="master-primary" type="button">＋ 現場を追加</button></div>
+  <div id="masterCompany" class="company-switch" role="group" aria-label="表示する会社">
+    <button type="button" data-company="菊永建設" aria-pressed="true">菊永建設</button>
+    <button type="button" data-company="アールシー" aria-pressed="false">アールシー</button>
+  </div>
+  <div class="master-filters"><select id="masterYear" aria-label="表示する年度"></select><input id="masterSearch" type="search" placeholder="現場名・工事番号で検索" aria-label="現場を検索"><button id="masterRefresh" type="button" aria-label="現場一覧を更新">↻ 更新</button></div>
+  <p id="masterMessage" class="status" role="status" aria-live="polite">現場を読み込みます…</p>
   <form id="masterEditor" hidden>
     <strong id="masterEditorTitle">現場を追加</strong>
     <label>年度<select id="editYear" required></select></label>
     <label>会社<select id="editCompany" required><option>菊永建設</option><option>アールシー</option></select></label>
     <label>工事種別<select id="editType" required><option>公共</option><option>民間</option></select></label>
     <label>区分<select id="editCategory"><option>通常</option><option>小規模</option></select></label>
-    <label>現場名<input id="editName" required maxlength="100" autocomplete="off"></label>
-    <label>表示<select id="editStatus"><option value="○">○ 通常の現場一覧</option><option value="△">△ 過去の現場</option><option value="×">× 一覧に表示しない</option><option value="">空欄 一覧に表示しない</option></select></label>
+    <label class="wide">現場名<input id="editName" required maxlength="100" autocomplete="off"></label>
+    <label class="wide">アプリでの表示<select id="editStatus"><option value="○">○ 通常の現場一覧</option><option value="△">△ 過去の現場</option><option value="×">× 一覧に表示しない</option><option value="">空欄 一覧に表示しない</option></select></label>
     <p id="editCode" class="status">工事番号はExcelで自動採番します。</p>
     <button type="submit" class="approve">変更を依頼する</button> <button id="masterCancel" type="button">閉じる</button>
   </form>
-  <div id="masterChanges"></div><div id="masterList"></div>
-</details>
+  <div id="masterPending" class="status" aria-live="polite"></div>
+  <div id="masterList"></div>
+  <details id="masterHistory" class="master-history"><summary>変更履歴 <span id="masterChangeCount"></span></summary><div id="masterChanges"></div></details>
+</section>
     <details class="panel compact">
       <summary><h2>Excelへの反映状況</h2></summary>
       <p class="status">出勤・修正の記録が、会社のExcelへ転記されるのを待っている件数です。</p>
