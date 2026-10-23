@@ -10,6 +10,7 @@
   <meta name="apple-mobile-web-app-title" content="出勤簿 管理者">
   <link rel="icon" type="image/png" href="./admin-icon.png">
   <link rel="apple-touch-icon" href="./admin-icon.png">
+  <link rel="stylesheet" href="./schedule.css">
   <link rel="manifest" href="./manifest.webmanifest">
   <style>
     * { box-sizing: border-box; }
@@ -158,6 +159,8 @@ select { max-width:100%; padding:10px; font-size:16px; border:1px solid #cbd5e1;
 <p id="loginMessage" class="status" role="status"></p></section></div>
   <div id="adminScreen" class="container" hidden>
     <h1>出勤簿 管理者画面</h1><p id="pageMessage" class="status" role="status" aria-live="polite"></p><button id="logoutButton" data-logout type="button" style="float:left;padding:10px 14px">ログアウト</button><div style="text-align:right"><button type="button" class="refresh" style="width:auto;padding:10px 16px" onclick="refreshAdmin()">↻ 更新</button></div>
+<nav class="work-nav" aria-label="業務の切り替え"><button type="button" data-work-view="master" aria-pressed="true">現場マスター</button><button type="button" data-work-view="schedule" aria-pressed="false">工程表</button></nav>
+<section class="panel" id="schedulePanel" hidden></section>
 <section class="panel master-panel" id="masterPanel" aria-labelledby="masterTitle">
   <div class="master-heading"><h2 id="masterTitle">現場マスター</h2><button id="masterAdd" class="master-primary" type="button">＋ 現場を追加</button></div>
   <div id="masterCompany" class="company-switch" role="group" aria-label="表示する会社">

@@ -1,3 +1,4 @@
+import { setupSchedule } from './schedule-ui.js';
 import { setupMaster } from './master-ui.js';
 import { auth, watchLogin, login, logout } from './firebase-auth.js';
 import { adminUid } from './config.js';
@@ -6,6 +7,7 @@ import { callAdmin, cancelAdminCalls } from './firestore-api.js';
 const $ = id => document.getElementById(id);
 let current = null, busy = false, showAll = false, session = 0;
 const master = setupMaster({call:callAdmin, authorized:()=>auth.currentUser?.uid===adminUid, setBusy, isBusy:()=>busy, message});
+const schedule = setupSchedule({call:callAdmin, authorized:()=>auth.currentUser?.uid===adminUid, setBusy, isBusy:()=>busy, message});
 function message(text, error = false) {
   $('pageMessage').textContent = text;
   $('pageMessage').style.color = error ? '#b91c1c' : '#475569';
@@ -13,7 +15,7 @@ function message(text, error = false) {
 function setBusy(value) {
   busy = value;
   document.querySelectorAll('#adminScreen button:not([data-logout])').forEach(button => { button.disabled = value; });
-  if(!value) master.restoreDisabled();
+  if(!value) { master.restoreDisabled(); schedule.restoreDisabled(); }
 }
 function element(tag, text, className) {
   const item = document.createElement(tag); item.textContent = text;
@@ -60,7 +62,7 @@ function render() {
 async function refreshAdmin() {
   if (busy || auth.currentUser?.uid !== adminUid) return;
   const epoch = session;
-  await master.load();
+  if(schedule.isVisible()) await schedule.load(); else await master.load();
   if (epoch !== session) return;
   setBusy(true); message('最新の情報を確認しています…');
   try {
@@ -117,7 +119,7 @@ $('logoutButton').onclick = async () => {
   try { await logout(); } catch { message('ログアウトできませんでした。通信を確認してください。', true); }
 };
 watchLogin(async user => {
-  session++; cancelAdminCalls(); master.reset(); current = null; showAll = false; busy = false;
+  session++; cancelAdminCalls(); master.reset(); schedule.reset(); current = null; showAll = false; busy = false;
   $('requestList').replaceChildren(); $('approvedDeviceList').replaceChildren();
   $('syncPending').textContent = '—'; $('syncEdits').textContent = '—';
   $('syncCheckedAt').textContent = ''; $('syncSummaryMessage').textContent = '最新情報を確認してください。';
