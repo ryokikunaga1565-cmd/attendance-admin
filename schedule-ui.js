@@ -1,11 +1,12 @@
 import {shortName,shortPeople,reiwaDate,weekLabel,personChoices,matchesPerson} from './schedule-format.js';
 export function setupSchedule({call,authorized,setBusy,isBusy,message}) {
  const $=id=>document.getElementById(id), el=(tag,text,cls)=>{const n=document.createElement(tag);n.textContent=text;if(cls)n.className=cls;return n;};
- let catalog=[],state=null,epoch=0,editor=null,filter='';
- $('schedulePanel').innerHTML=`<div class="schedule-heading"><div><h2>工程表マスター</h2><p class="status">共有Excelと連携</p></div><button id="scheduleRefresh" type="button">↻ 更新</button></div>
+ let catalog=[],state=null,epoch=0,editor=null,filter='',pendingWeek='';
+ $('schedulePanel').innerHTML=`<div class="schedule-heading"><div><h2>工程表マスター</h2><p class="status">共有Excelと連携</p></div><button id="scheduleCreate" type="button" data-schedule-write>＋ 新しい週</button><button id="scheduleRefresh" type="button">↻ 更新</button></div>
  <div class="schedule-controls"><button id="schedulePrev" type="button" aria-label="前の週">‹</button><select id="scheduleWeek" aria-label="表示する週"></select><button id="scheduleNext" type="button" aria-label="次の週">›</button></div>
  <div class="schedule-controls"><label>人員で絞り込み<select id="schedulePerson"><option value="">全員</option></select></label><button id="schedulePrint" type="button">印刷・PDF</button><button id="schedulePublish" type="button" class="master-primary">社員へ公開</button></div>
  <p id="scheduleMessage" class="status" role="status" aria-live="polite">工程表を読み込みます。</p><p id="schedulePublished" class="status"></p>
+ <form id="scheduleNewWeek" class="schedule-editor" hidden><strong>新しい週を作成</strong><p class="status">表示中の週の書式を引き継ぎます。作成後に予定を入力できます。</p><label>週の開始日（月曜日）<input id="scheduleNewStart" type="date" required></label><label>予定の引き継ぎ<select id="scheduleNewContents"><option value="empty">空の予定で作成（書式のみ）</option><option value="copy">表示中の週の予定もコピー</option></select></label><p id="scheduleNewRange" class="status"></p><div class="schedule-controls"><button type="submit" class="master-primary">Excelに新しい週を作成</button><button id="scheduleNewCancel" type="button">閉じる</button></div></form>
  <form id="scheduleEditor" class="schedule-editor" hidden><strong id="scheduleEditorTitle"></strong>
  <div id="scheduleSiteFields"><label>現場マスターから選ぶ<select id="scheduleSite"><option value="">予定名を直接入力／変更しない</option></select></label></div>
  <label>現場名・予定名<input id="scheduleName" maxlength="300" required autocomplete="off"></label>
@@ -31,7 +32,7 @@ export function setupSchedule({call,authorized,setBusy,isBusy,message}) {
  function fillWeekSelect(){const selected=$('scheduleWeek').value;$('scheduleWeek').replaceChildren();for(const w of catalog){const o=el('option',weekLabel(w));o.value=w.key;$('scheduleWeek').append(o);}if(catalog.some(w=>w.key===selected))$('scheduleWeek').value=selected;}
  function personOptions(){return personChoices(state.week,state.people||[]);}
  function render(){
-  const w=state.week;const select=$('schedulePerson');select.replaceChildren();for(const name of ['',...personOptions()]){const o=el('option',name||'全員');o.value=name;select.append(o);}if(![...select.options].some(o=>o.value===filter))filter='';select.value=filter;$('scheduleWeek').value=w.key;$('scheduleEditor').hidden=true;$('scheduleDays').replaceChildren();
+  const w=state.week;const select=$('schedulePerson');select.replaceChildren();for(const name of ['',...personOptions()]){const o=el('option',name||'全員');o.value=name;select.append(o);}if(![...select.options].some(o=>o.value===filter))filter='';select.value=filter;$('scheduleWeek').value=w.key;$('scheduleNewWeek').hidden=true;$('scheduleEditor').hidden=true;$('scheduleDays').replaceChildren();
   for(const [i,day] of w.days.entries()){
    const section=el('section','','schedule-day'),head=el('div','','schedule-day-heading');
    head.append(el('h3',day.date.slice(5).replace('-','/')+'（'+'月火水木金土日'[i]+'）'));
@@ -65,8 +66,8 @@ export function setupSchedule({call,authorized,setBusy,isBusy,message}) {
    const result=await call('getScheduleCatalog');if(own!==epoch)return;catalog=result.weeks;fillWeekSelect();
    if(!catalog.length){state=null;$('scheduleDays').replaceChildren();$('scheduleMessage').textContent='まだExcelと同期されていません。同期PCの工程表同期を起動してください。';return;}
    const today=new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Tokyo'});
-   const chosen=catalog.find(w=>w.key===(key||state?.week.key))||catalog.find(w=>w.start<=today&&w.end>=today)||catalog.find(w=>w.start<=today)||catalog[catalog.length-1];
-   const updated=await call('getScheduleWeek',{key:chosen.key});if(own!==epoch)return;state=updated;render();
+   const chosen=catalog.find(w=>w.key===(key||(catalog.some(w=>w.key===pendingWeek)?pendingWeek:state?.week.key)))||catalog.find(w=>w.start<=today&&w.end>=today)||catalog.find(w=>w.start<=today)||catalog[catalog.length-1];
+   const updated=await call('getScheduleWeek',{key:chosen.key});if(own!==epoch)return;state=updated;if(state.week.key===pendingWeek)pendingWeek='';render();
   }catch(e){if(own===epoch){if(state)$('scheduleWeek').value=state.week.key;$('scheduleMessage').textContent=e.message+(state?' 表示は前回の内容です。':'');}}
   finally{if(own===epoch){setBusy(false);restoreDisabled();}}
  }
@@ -83,11 +84,16 @@ export function setupSchedule({call,authorized,setBusy,isBusy,message}) {
  }
  async function mutate(payload){
   if(isBusy()||!state||pending()||!authorized())return;const own=epoch,key=state.week.key;setBusy(true);let accepted=false;
-  try{const result=await call('requestScheduleChange',{...payload,key,revision:state.week.revision});if(own!==epoch)return;accepted=true;$('scheduleEditor').hidden=true;message(result.message);const updated=await call('getScheduleWeek',{key});if(own!==epoch)return;state=updated;render();}
+  try{const result=await call('requestScheduleChange',{...payload,key,revision:state.week.revision});if(own!==epoch)return;accepted=true;if(payload.kind==='createWeek')pendingWeek=result.targetKey||'';$('scheduleNewWeek').hidden=true;$('scheduleEditor').hidden=true;message(result.message);const updated=await call('getScheduleWeek',{key});if(own!==epoch)return;state=updated;render();}
   catch(e){if(own===epoch)message((accepted?'依頼は受け付けましたが、一覧を更新できませんでした。':'')+e.message,true);}
   finally{if(own===epoch){setBusy(false);restoreDisabled();}}
  }
  $('scheduleRename').onclick=()=>{$('scheduleSiteFields').hidden=false;$('scheduleName').readOnly=false;$('scheduleName').focus();};
+ const updateNewRange=()=>{const start=$('scheduleNewStart').value,date=new Date(start+'T00:00:00Z');if(Number.isNaN(+date)){ $('scheduleNewRange').textContent='';return; }$('scheduleNewRange').textContent=weekLabel({start,end:new Date(+date+6*86400000).toISOString().slice(0,10)});};
+ $('scheduleCreate').onclick=()=>{if(!state||isBusy()||pending())return;$('scheduleEditor').hidden=true;$('scheduleNewContents').value='empty';const end=new Date(state.week.end+'T00:00:00Z');$('scheduleNewStart').value=new Date(+end+86400000).toISOString().slice(0,10);updateNewRange();$('scheduleNewWeek').hidden=false;$('scheduleNewWeek').scrollIntoView({block:'start',behavior:'smooth'});};
+ $('scheduleNewStart').onchange=updateNewRange;
+ $('scheduleNewCancel').onclick=()=>$('scheduleNewWeek').hidden=true;
+ $('scheduleNewWeek').onsubmit=e=>{e.preventDefault();const start=$('scheduleNewStart').value;if(new Date(start+'T00:00:00Z').getUTCDay()!==1){message('月曜日を選んでください。',true);return;}if(confirm($('scheduleNewRange').textContent+' の週をExcelに作成しますか？'))mutate({kind:'createWeek',start,contents:$('scheduleNewContents').value});};
  $('scheduleSite').onchange=()=>{if($('scheduleSite').value==='__none__'){$('scheduleCode').value='';$('scheduleAddress').value='';return;}const site=state?.sites.find(s=>s.code===$('scheduleSite').value);if(!site)return;$('scheduleName').value=site.name;$('scheduleCode').value=site.code;const known=state.week.days.flatMap(d=>d.rows).find(r=>r.data.code===site.code && r.data.address);$('scheduleAddress').value=known?.data.address||'';};
  $('scheduleEditor').onsubmit=e=>{e.preventDefault();if(!editor)return;const data={name:$('scheduleName').value.trim(),code:$('scheduleCode').value,time:$('scheduleTime').value.trim(),address:$('scheduleAddress').value.trim(),people:$('schedulePeople').value.trim(),vehicles:Array.from({length:8},(_,i)=>($('scheduleVehicle'+i).checked?($('scheduleVehicle'+i).dataset.original||'1'):''))};if(confirm('この予定をExcelへ反映する依頼を送りますか？'))mutate({...editor,kind:editor.row?'edit':'add',data});};
  $('scheduleCancel').onclick=()=>$('scheduleEditor').hidden=true;
@@ -98,5 +104,5 @@ export function setupSchedule({call,authorized,setBusy,isBusy,message}) {
  $('scheduleNext').onclick=()=>{const i=catalog.findIndex(w=>w.key===state?.week.key);if(i>0)load(catalog[i-1].key);};
  $('schedulePerson').onchange=()=>{filter=$('schedulePerson').value.trim();if(state)render();};
  $('schedulePrint').onclick=()=>{if(!state)return;document.body.classList.add('printing-schedule');window.print();};window.addEventListener('afterprint',()=>document.body.classList.remove('printing-schedule'));
- return {load,isVisible:()=>!$('schedulePanel').hidden,restoreDisabled,reset(){epoch++;catalog=[];state=null;editor=null;filter='';$('schedulePanel').hidden=true;$('masterPanel').hidden=false;document.querySelectorAll('[data-work-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.workView==='master')));$('scheduleDays').replaceChildren();$('scheduleChanges').replaceChildren();$('scheduleWeek').replaceChildren();$('schedulePerson').value='';$('scheduleEditor').hidden=true;$('schedulePublished').textContent='';$('scheduleMessage').textContent='工程表を読み込みます。';}};
+ return {load,isVisible:()=>!$('schedulePanel').hidden,restoreDisabled,reset(){epoch++;catalog=[];state=null;editor=null;filter='';pendingWeek='';$('scheduleNewWeek').hidden=true;$('schedulePanel').hidden=true;$('masterPanel').hidden=false;document.querySelectorAll('[data-work-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.workView==='master')));$('scheduleDays').replaceChildren();$('scheduleChanges').replaceChildren();$('scheduleWeek').replaceChildren();$('schedulePerson').value='';$('scheduleEditor').hidden=true;$('schedulePublished').textContent='';$('scheduleMessage').textContent='工程表を読み込みます。';}};
 }
