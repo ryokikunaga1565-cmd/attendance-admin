@@ -249,7 +249,7 @@ select { max-width:100%; padding:10px; font-size:16px; border:1px solid #cbd5e1;
 
 </div>
 <script type="module">
-import('./app.js').catch(() => {
+import('./app.js?v=20261027a').catch(() => {
  const status = document.getElementById('bootMessage');
  status.hidden = false; status.textContent = '画面を読み込めませんでした。通信と公開ファイルを確認して再読み込みしてください。';
 });

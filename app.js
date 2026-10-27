@@ -1,4 +1,4 @@
-import { setupSchedule } from './schedule-ui.js';
+import { setupSchedule } from './schedule-ui.js?v=20261027a';
 import { setupMaster } from './master-ui.js';
 import { auth, watchLogin, login, logout } from './firebase-auth.js';
 import { adminUid } from './config.js';
@@ -62,11 +62,14 @@ function render() {
 async function refreshAdmin() {
   if (busy || auth.currentUser?.uid !== adminUid) return;
   const epoch = session;
+  const overview = callAdmin('getOverview').then(value => ({value}), error => ({error}));
   if(schedule.isVisible()) await schedule.load(); else await master.load();
   if (epoch !== session) return;
   setBusy(true); message('最新の情報を確認しています…');
   try {
-    const result = await callAdmin('getOverview');
+    const outcome = await overview;
+    if (outcome.error) throw outcome.error;
+    const result = outcome.value;
     if (epoch !== session) return;
     current = result; render(); message('更新しました。');
   } catch (error) {

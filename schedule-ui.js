@@ -10,7 +10,7 @@ export function setupSchedule({call,authorized,setBusy,isBusy,message}) {
  <form id="scheduleEditor" class="schedule-editor" hidden><strong id="scheduleEditorTitle"></strong>
  <div id="scheduleSiteFields"><label>現場マスターから選ぶ<select id="scheduleSite"><option value="">予定名を直接入力／変更しない</option></select></label></div>
  <label>現場名・予定名<input id="scheduleName" maxlength="300" required autocomplete="off"></label>
- <label>工事番号<input id="scheduleCode" readonly></label><button id="scheduleRename" type="button">現場名・工事番号を変更する</button><label>昼・夜／時間<input id="scheduleTime" maxlength="300" placeholder="昼、夜、午前 など"></label>
+ <label>工事番号<input id="scheduleCode" readonly></label><button id="scheduleRename" type="button">現場名・工事番号を変更する</button><label>昼・夜／時間<select id="scheduleTime"><option value="">未入力</option><option value="昼">昼</option><option value="夜">夜</option><option value="午前">午前</option><option value="午後">午後</option></select></label>
  <label>住所<input id="scheduleAddress" maxlength="300"></label><label>人員・協力会社<input id="schedulePeople" maxlength="1000" placeholder="氏名を「・」で区切って入力"></label><div id="schedulePeopleOptions" class="schedule-chips"></div>
  <fieldset><legend>使用車両・機械（押して選択）</legend><div id="scheduleVehicles" class="schedule-vehicles"></div></fieldset>
  <div class="schedule-controls"><button id="scheduleSave" type="submit" class="master-primary">Excelへ反映を依頼</button><button id="scheduleCancel" type="button">閉じる</button><button id="scheduleRemove" type="button" class="schedule-remove">この予定を削除</button></div></form>
@@ -75,6 +75,8 @@ export function setupSchedule({call,authorized,setBusy,isBusy,message}) {
   if(isBusy()||pending())return;editor={date:day.date,row:row?.row};
   const data=row?.data||{name:'',code:'',time:'昼',address:'',people:'',vehicles:Array(8).fill('')};
   $('scheduleEditorTitle').textContent=reiwaDate(day.date)+'　'+(row?'予定を編集':'予定を追加');
+  const timeSelect=$('scheduleTime'); timeSelect.querySelectorAll('[data-existing-time]').forEach(o=>o.remove());
+  if(data.time && ![...timeSelect.options].some(o=>o.value===data.time)){const option=el('option',data.time);option.value=data.time;option.dataset.existingTime='true';timeSelect.append(option);}
   for(const [id,key] of [['scheduleName','name'],['scheduleCode','code'],['scheduleTime','time'],['scheduleAddress','address'],['schedulePeople','people']])$(id).value=data[key];
   $('scheduleSite').replaceChildren(el('option','予定名を直接入力／変更しない'));$('scheduleSite').firstChild.value='';const none=el('option','工事番号なし（休み・内業など）');none.value='__none__';$('scheduleSite').append(none);
   for(const site of state.sites){const o=el('option',site.name+' ／ '+site.code+' ／ '+site.company);o.value=site.code;$('scheduleSite').append(o);}
